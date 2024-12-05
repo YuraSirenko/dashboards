@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Total Income by Item</title>
+    <!-- Include Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .container {
+            width: 95%;
+            margin: auto;
+            font-family: Arial, sans-serif;
+        }
+        .stats, .controls {
+            margin: 20px 0;
+        }
+        .stats p {
+            margin: 5px 0;
+        }
+        .controls button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .controls button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Total Income by Item</h1>
+
+        <div class="stats">
+            <p><strong>Average Total Income:</strong> {{ stats.mean|floatformat:2 }}</p>
+            <p><strong>Median Total Income:</strong> {{ stats.median|floatformat:2 }}</p>
+            <p><strong>Minimum Total Income:</strong> {{ stats.min|floatformat:2 }}</p>
+            <p><strong>Maximum Total Income:</strong> {{ stats.max|floatformat:2 }}</p>
+        </div>
+
+        <div class="controls">
+            <button onclick="window.location.href='?sort=default'">Default Sort</button>
+            <button onclick="window.location.href='?sort=asc'">Sort Ascending</button>
+            <button onclick="window.location.href='?sort=desc'">Sort Descending</button>
+        </div>
+
+        <div>
+            {{ chart_html|safe }}
+        </div>
+    </div>
+</body>
+</html>

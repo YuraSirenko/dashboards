@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard {{ version }}</title>
+    <!-- Include Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .chart {
+            width: 100%;
+            max-width: 900px;
+            margin: auto;
+            margin-bottom: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard {{ version }}</h1>
+    <div>
+        {% for graph in graphs %}
+            <div class="chart">
+                {{ graph|safe }}
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

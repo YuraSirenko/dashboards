@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+            padding: 50px 0;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .buttons {
+            margin-top: 30px;
+        }
+        .buttons button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 25px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .buttons button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Dashboard</h1>
+        <p>Select a chart to view:</p>
+        <div class="buttons">
+            <button onclick="window.location.href='/v1/total-order-sum-by-customers/'">Total Order Sum by Customers (v1)</button>
+            <button onclick="window.location.href='/v2/total-order-sum-by-customers/'">Total Order Sum by Customers (v2)</button>
+            <button onclick="window.location.href='/v1/total-order-sum-by-waiters/'">Total Order Sum by Waiters (v1)</button>
+            <button onclick="window.location.href='/v2/total-order-sum-by-waiters/'">Total Order Sum by Waiters (v2)</button>
+            <button onclick="window.location.href='/v1/total-order-sum-by-months/'">Total Order Sum by Months (v1)</button>
+            <button onclick="window.location.href='/v2/total-order-sum-by-months/'">Total Order Sum by Months (v2)</button>
+            <button onclick="window.location.href='/v1/order-count-by-days/'">Order Count by Days (v1)</button>
+            <button onclick="window.location.href='/v2/order-count-by-days/'">Order Count by Days (v2)</button>
+            <button onclick="window.location.href='/v1/total-items-sold-by-item/'">Total Items Sold by Item (v1)</button>
+            <button onclick="window.location.href='/v2/total-items-sold-by-item/'">Total Items Sold by Item (v2)</button>
+            <button onclick="window.location.href='/v1/total-income-by-item/'">Total Income by Item (v1)</button>
+            <button onclick="window.location.href='/v2/total-income-by-item/'">Total Income by Item (v2)</button>
+            <button onclick="window.location.href='/v1/dashboard/'">Dashboard v1</button>
+            <button onclick="window.location.href='/v2/dashboard/'">Dashboard v2</button>
+            <button onclick="window.location.href='/performance-chart/'">Performance</button>
+        </div>
+    </div>
+</body>
+</html>

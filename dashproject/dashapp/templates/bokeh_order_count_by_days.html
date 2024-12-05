@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Count by Days Analysis</title>
+    <link
+      href="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.css"
+      rel="stylesheet" type="text/css">
+    <script
+      src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.js">
+    </script>
+    <style>
+        .container {
+            width: 95%;
+            margin: auto;
+            font-family: Arial, sans-serif;
+        }
+        .stats, .controls {
+            margin: 20px 0;
+        }
+        .stats ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .stats li {
+            margin: 5px 0;
+        }
+        .controls form {
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .controls button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .controls button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Order Count by Days Analysis</h1>
+
+        <div class="stats">
+            <h3>Statistical Data:</h3>
+            <ul>
+                <li><strong>Average Order Count:</strong> {{ stats.mean|floatformat:2 }}</li>
+                <li><strong>Median Order Count:</strong> {{ stats.median|floatformat:2 }}</li>
+                <li><strong>Minimum Order Count:</strong> {{ stats.min|floatformat:2 }}</li>
+                <li><strong>Maximum Order Count:</strong> {{ stats.max|floatformat:2 }}</li>
+            </ul>
+        </div>
+
+        <div class="controls">
+            <form method="get">
+                <input type="hidden" name="sort" value="asc">
+                <button type="submit">Sort Ascending</button>
+            </form>
+            <form method="get">
+                <input type="hidden" name="sort" value="desc">
+                <button type="submit">Sort Descending</button>
+            </form>
+            <form method="get">
+                <input type="hidden" name="sort" value="default">
+                <button type="submit">Sort Default</button>
+            </form>
+        </div>
+
+        <div>
+            {% if script and div %}
+                {{ script|safe }}
+                {{ div|safe }}
+            {% else %}
+                <p>No data available for the chart.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
