@@ -1,14 +1,26 @@
 from django.shortcuts import render
+from django import forms
+from django.db.models import Count
+from django.db.models.functions import ExtractYear, ExtractMonth, ExtractDay
 import pandas as pd
 import plotly.graph_objects as go
-from dashapp.queries.order_count_by_days import get_order_count_by_days
+from dashapp.models import Order
 
-def prepare_dataframe(data):
-    df = pd.DataFrame(data)
-    if not df.empty:
-        df['date'] = pd.to_datetime(df[['year', 'month', 'day']])
-        df = df.sort_values('date')
-    return df
+class CustomerFilterForm(forms.Form):
+    customer = forms.ChoiceField(
+        choices=[],
+        label="Вибрати клієнта",
+        required=False
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        customers = Order.objects.values('customer__first_name', 'customer__last_name').distinct()
+        customer_choices = [("", "Всі клієнти")]
+        for c in customers:
+            full_name = f"{c['customer__first_name']} {c['customer__last_name']}"
+            customer_choices.append((full_name, full_name))
+        self.fields['customer'].choices = customer_choices
 
 def calculate_statistics(df):
     if df.empty:
@@ -22,7 +34,7 @@ def calculate_statistics(df):
 
 def create_plotly_line_chart(df):
     if df.empty:
-        return "<p>No data available for the chart.</p>"
+        return "<p>Немає даних для відображення графіку.</p>"
 
     fig = go.Figure()
     fig.add_trace(
@@ -31,14 +43,14 @@ def create_plotly_line_chart(df):
             y=df['order_count'],
             mode='lines+markers',
             line=dict(color='orange'),
-            name='Order Count'
+            name='Кількість замовлень'
         )
     )
 
     fig.update_layout(
-        title="Order Count by Days",
-        xaxis=dict(title="Date"),
-        yaxis=dict(title="Number of Orders"),
+        title="Кількість замовлень по днях",
+        xaxis=dict(title="Дата"),
+        yaxis=dict(title="Кількість замовлень"),
         height=500,
         width=900,
         template="plotly_white",
@@ -46,15 +58,66 @@ def create_plotly_line_chart(df):
 
     return fig.to_html(full_html=False)
 
+def get_order_count_by_days(customer=None):
+    orders = Order.objects.annotate(
+        year=ExtractYear('event_started'),
+        month=ExtractMonth('event_started'),
+        day=ExtractDay('event_started')
+    )
+    
+    if customer:
+        try:
+            first_name, last_name = customer.split(' ', 1)
+            orders = orders.filter(
+                customer__first_name=first_name,
+                customer__last_name=last_name
+            )
+        except ValueError:
+            orders = orders.none()
+
+    orders = orders.values('year', 'month', 'day').annotate(
+        order_count=Count('id')
+    ).order_by('year', 'month', 'day')
+    
+    df = pd.DataFrame(list(orders))
+    if not df.empty:
+        # Drop rows with missing date components
+        df = df.dropna(subset=['year', 'month', 'day'])
+        
+        # Ensure date components are integers
+        df['year'] = df['year'].astype(int)
+        df['month'] = df['month'].astype(int)
+        df['day'] = df['day'].astype(int)
+        
+        # Create date column safely
+        try:
+            df['date'] = pd.to_datetime({
+                'year': df['year'],
+                'month': df['month'],
+                'day': df['day']
+            })
+            # Remove any resulting NaT values
+            df = df.dropna(subset=['date'])
+            df = df.sort_values('date')
+        except (ValueError, TypeError):
+            # If date conversion fails, return empty DataFrame
+            return pd.DataFrame()
+    
+    return df
 def order_count_by_days(request):
-    order_data = get_order_count_by_days()
-    data = list(order_data)
-    df = prepare_dataframe(data)
+    form = CustomerFilterForm(request.GET or None)
+    customer_selected = None
+    
+    if form.is_valid():
+        customer_selected = form.cleaned_data.get('customer')
+    
+    df = get_order_count_by_days(customer=customer_selected)
     stats = calculate_statistics(df)
     chart_html = create_plotly_line_chart(df)
 
     return render(request, 'plotly_order_count_by_days.html', {
-        'chart_html': chart_html,
-        'data_table': df.to_dict(orient='records'),
-        'stats': stats
+        'plot': chart_html,
+        'form': form,
+        'data': df.to_dict(orient='records'),
+        **stats,
     })

@@ -1,29 +1,78 @@
+from django.shortcuts import render
+from django import forms
+from django.db.models import Count
+from django.db.models.functions import ExtractYear, ExtractMonth, ExtractDay
+import pandas as pd
+from bokeh.plotting import figure
+from bokeh.embed import components
+from bokeh.models import ColumnDataSource
+from dashapp.models import Order
 
 from django.shortcuts import render
 import pandas as pd
 from bokeh.plotting import figure
 from bokeh.embed import components
 from bokeh.models import ColumnDataSource
-from dashapp.queries.order_count_by_days import get_order_count_by_days
+
+def total_order_count_by_days_view(request):  # Changed from order_count_by_days_view
+    form = CustomerFilterForm(request.GET or None)
+    customer_selected = None
+    
+    if form.is_valid():
+        customer_selected = form.cleaned_data.get('customer')
+    
+    order_data = get_order_count_by_days(customer=customer_selected)
+    df = prepare_dataframe(list(order_data), 'default')
+    
+    stats = calculate_statistics(df)
+    script, div = create_bokeh_chart(df)
+
+    return render(request, 'bokeh_order_count_by_days.html', {
+        'script': script,
+        'div': div,
+        'form': form,
+        'data_table': df.to_dict(orient='records'),
+        'stats': stats,
+    })
+
+class CustomerFilterForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        customers = Order.objects.values('customer__first_name', 'customer__last_name').distinct()
+        customer_choices = [("", "Всі клієнти")]
+        for c in customers:
+            full_name = f"{c['customer__first_name']} {c['customer__last_name']}"
+            customer_choices.append((full_name, full_name))
+        self.fields['customer'] = forms.ChoiceField(
+            choices=customer_choices,
+            label="Вибрати клієнта",
+            required=False
+        )
 
 def prepare_dataframe(data, sort_order):
-
     df = pd.DataFrame(data)
     if not df.empty:
-        # Combine year, month, and day into a single date column
-        df['date'] = pd.to_datetime(df[['year', 'month', 'day']])
-
-        # Sort the DataFrame based on the sort_order
+        # Create date column from year, month, day
+        df['date'] = pd.to_datetime({
+            'year': df['year'],
+            'month': df['month'],
+            'day': df['day']
+        })
+        
+        # Drop any NaT values and sort
+        df = df.dropna(subset=['date'])
+        
         if sort_order == "asc":
-            df = df.sort_values(by='date', ascending=True).reset_index(drop=True)
+            df = df.sort_values(by='date', ascending=True)
         elif sort_order == "desc":
-            df = df.sort_values(by='date', ascending=False).reset_index(drop=True)
+            df = df.sort_values(by='date', ascending=False)
         else:
-            df = df.sort_values(by='date', ascending=True).reset_index(drop=True)  # Default to ascending
+            df = df.sort_values(by='date', ascending=True)
+            
+        df = df.reset_index(drop=True)
     return df
 
 def calculate_statistics(df):
-
     if df.empty:
         return {'mean': 0, 'median': 0, 'min': 0, 'max': 0}
     return {
@@ -34,22 +83,21 @@ def calculate_statistics(df):
     }
 
 def create_bokeh_chart(df):
-
     if df.empty:
-        return None, "<p>No data available for the chart.</p>"
+        return None, "<p>Немає даних для відображення.</p>"
 
     source = ColumnDataSource(df)
     p = figure(
         x_axis_type='datetime',
-        title="Order Count by Days",
-        x_axis_label="Date",
-        y_axis_label="Number of Orders",
+        title="Кількість замовлень по днях",
+        x_axis_label="Дата",
+        y_axis_label="Кількість замовлень",
         width=900,
         height=500,
         tools="hover,pan,box_zoom,reset,save"
     )
 
-    p.line('date', 'order_count', source=source, line_width=2, color="blue", legend_label="Order Count")
+    p.line('date', 'order_count', source=source, line_width=2, color="blue", legend_label="Кількість замовлень")
     p.circle('date', 'order_count', source=source, size=8, color="navy", alpha=0.5)
 
     p.xgrid.grid_line_color = None
@@ -59,21 +107,46 @@ def create_bokeh_chart(df):
     script, div = components(p)
     return script, div
 
-def total_order_count_by_days_view(request):
-    sort_order = request.GET.get('sort', 'asc')  # Default to ascending order
-    total_order_data = get_order_count_by_days()
+def get_order_count_by_days(customer=None):
+    orders = Order.objects.annotate(
+        year=ExtractYear('event_started'),
+        month=ExtractMonth('event_started'),
+        day=ExtractDay('event_started')
+    )
+    
+    if customer:
+        try:
+            first_name, last_name = customer.split(' ', 1)
+            orders = orders.filter(
+                customer__first_name=first_name,
+                customer__last_name=last_name
+            )
+        except ValueError:
+            orders = orders.none()
 
-    # Fetch the required fields: year, month, day, and count of orders
-    data = list(total_order_data.values('year', 'month', 'day', 'order_count'))
+    orders = orders.values('year', 'month', 'day').annotate(
+        order_count=Count('id')
+    ).order_by('year', 'month', 'day')
+    
+    return orders
 
-    df = prepare_dataframe(data, sort_order)
+def order_count_by_days_view(request):
+    form = CustomerFilterForm(request.GET or None)
+    customer_selected = None
+    
+    if form.is_valid():
+        customer_selected = form.cleaned_data.get('customer')
+    
+    order_data = get_order_count_by_days(customer=customer_selected)
+    df = prepare_dataframe(list(order_data), 'default')
+    
     stats = calculate_statistics(df)
     script, div = create_bokeh_chart(df)
 
     return render(request, 'bokeh_order_count_by_days.html', {
         'script': script,
         'div': div,
+        'form': form,
         'data_table': df.to_dict(orient='records'),
         'stats': stats,
-        'sort_order': sort_order,
     })

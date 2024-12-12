@@ -1,21 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Total Items Sold by Item</title>
-    <link
-      href="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.css"
-      rel="stylesheet" type="text/css">
-    <script
-      src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.js">
-    </script>
+    <title>Кількість проданих товарів</title>
+    <link href="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.css" rel="stylesheet" type="text/css">
+    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.js"></script>
     <style>
         .container {
             width: 95%;
             margin: auto;
             font-family: Arial, sans-serif;
         }
-        .stats, .controls {
+        .stats, .controls, .filter-form {
             margin: 20px 0;
         }
         .stats ul {
@@ -25,11 +21,14 @@
         .stats li {
             margin: 5px 0;
         }
-        .controls form {
-            display: inline-block;
-            margin-right: 10px;
+        .filter-form label {
+            display: block;
+            margin: 10px 0 5px;
         }
-        .controls button {
+        .filter-form input[type="range"] {
+            width: 100%;
+        }
+        .filter-form button {
             padding: 10px 15px;
             background-color: #4CAF50;
             color: white;
@@ -37,48 +36,102 @@
             cursor: pointer;
             border-radius: 4px;
         }
-        .controls button:hover {
+        .filter-form button:hover {
             background-color: #45a049;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        .data-table th {
+            background-color: #f2f2f2;
+            text-align: left;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Total Items Sold by Item</h1>
+        <h1>Кількість проданих товарів</h1>
+
+        <div class="filter-form">
+            <h3>Фільтр та сортування</h3>
+            <form method="post">
+                {% csrf_token %}
+                <label for="id_min_quantity">Мінімальна кількість: <span id="min_quantity_value">{{ form.initial.min_quantity }}</span></label>
+                <input type="range" name="min_quantity" id="id_min_quantity" min="{{ form.fields.min_quantity.min_value }}" max="{{ form.fields.min_quantity.max_value }}" value="{{ form.initial.min_quantity }}">
+
+                <label for="id_max_quantity">Максимальна кількість: <span id="max_quantity_value">{{ form.initial.max_quantity }}</span></label>
+                <input type="range" name="max_quantity" id="id_max_quantity" min="{{ form.fields.max_quantity.min_value }}" max="{{ form.fields.max_quantity.max_value }}" value="{{ form.initial.max_quantity }}">
+
+                {{ form.sort_order.label_tag }}
+                {{ form.sort_order }}
+
+                <button type="submit">Застосувати</button>
+            </form>
+        </div>
 
         <div class="stats">
-            <h3>Statistical Data:</h3>
+            <h3>Статистика</h3>
             <ul>
-                <li><strong>Average Items Sold:</strong> {{ stats.mean|floatformat:2 }}</li>
-                <li><strong>Median Items Sold:</strong> {{ stats.median|floatformat:2 }}</li>
-                <li><strong>Minimum Items Sold:</strong> {{ stats.min|floatformat:2 }}</li>
-                <li><strong>Maximum Items Sold:</strong> {{ stats.max|floatformat:2 }}</li>
+                <li><strong>Середня кількість:</strong> {{ stats.mean|floatformat:2 }}</li>
+                <li><strong>Медіана кількості:</strong> {{ stats.median|floatformat:2 }}</li>
+                <li><strong>Мінімальна кількість:</strong> {{ stats.min|floatformat:2 }}</li>
+                <li><strong>Максимальна кількість:</strong> {{ stats.max|floatformat:2 }}</li>
             </ul>
         </div>
 
-        <div class="controls">
-            <form method="get">
-                <input type="hidden" name="sort" value="desc">
-                <button type="submit">Sort Descending</button>
-            </form>
-            <form method="get">
-                <input type="hidden" name="sort" value="asc">
-                <button type="submit">Sort Ascending</button>
-            </form>
-            <form method="get">
-                <input type="hidden" name="sort" value="default">
-                <button type="submit">Sort Default</button>
-            </form>
-        </div>
-
-        <div>
+        <div class="chart-container">
             {% if script and div %}
                 {{ script|safe }}
                 {{ div|safe }}
             {% else %}
-                <p>No data available for the chart.</p>
+                <p>Немає даних для відображення графіку.</p>
             {% endif %}
         </div>
+
+        <div class="data-table-container">
+            <h3>Дані по товарах</h3>
+            {% if data_table %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Товар</th>
+                            <th>Кількість</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data_table %}
+                        <tr>
+                            <td>{{ row.item_name }}</td>
+                            <td>{{ row.total_quantity }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Дані відсутні.</p>
+            {% endif %}
+        </div>
+
+        <script>
+            const minQuantityInput = document.getElementById('id_min_quantity');
+            const maxQuantityInput = document.getElementById('id_max_quantity');
+            const minQuantityValue = document.getElementById('min_quantity_value');
+            const maxQuantityValue = document.getElementById('max_quantity_value');
+
+            minQuantityInput.addEventListener('input', function() {
+                minQuantityValue.textContent = this.value;
+            });
+
+            maxQuantityInput.addEventListener('input', function() {
+                maxQuantityValue.textContent = this.value;
+            });
+        </script>
     </div>
 </body>
 </html>

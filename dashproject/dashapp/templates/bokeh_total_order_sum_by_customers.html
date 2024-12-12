@@ -1,81 +1,96 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Total Order Sum by Customers</title>
-    <link
-      href="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.css"
-      rel="stylesheet" type="text/css">
-    <script
-      src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.js">
-    </script>
+    <title>Загальна сума замовлень по клієнтах</title>
+    <link href="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.css" rel="stylesheet" type="text/css">
+    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.js"></script>
     <style>
-        .container {
-            width: 95%;
-            margin: auto;
-            font-family: Arial, sans-serif;
-        }
-        .stats, .controls {
+        /* ... existing styles ... */
+        .filter-form {
             margin: 20px 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
         }
-        .stats ul {
-            list-style-type: none;
-            padding: 0;
+        .filter-form label {
+            display: block;
+            margin: 10px 0 5px;
         }
-        .stats li {
-            margin: 5px 0;
+        .filter-form input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
         }
-        .controls form {
-            display: inline-block;
-            margin-right: 10px;
-        }
-        .controls button {
-            padding: 10px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        .controls button:hover {
-            background-color: #45a049;
+        .filter-form select {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Total Order Sum by Customers</h1>
+        <h1>Загальна сума замовлень по клієнтах</h1>
+
+        <div class="filter-form">
+            <h3>Фільтр та сортування</h3>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit">Застосувати</button>
+            </form>
+        </div>
+
         <div class="stats">
-            <h3>Statistical Data:</h3>
+            <h3>Статистика</h3>
             <ul>
-                <li><strong>Average Total Sum:</strong> {{ stats.mean|floatformat:2 }}</li>
-                <li><strong>Median Total Sum:</strong> {{ stats.median|floatformat:2 }}</li>
-                <li><strong>Minimum Total Sum:</strong> {{ stats.min|floatformat:2 }}</li>
-                <li><strong>Maximum Total Sum:</strong> {{ stats.max|floatformat:2 }}</li>
+                <li><strong>Середня сума замовлень:</strong> {{ stats.mean|floatformat:2 }}</li>
+                <li><strong>Медіана суми замовлень:</strong> {{ stats.median|floatformat:2 }}</li>
+                <li><strong>Мінімальна сума замовлень:</strong> {{ stats.min|floatformat:2 }}</li>
+                <li><strong>Максимальна сума замовлень:</strong> {{ stats.max|floatformat:2 }}</li>
             </ul>
         </div>
-        <div class="controls">
-            <form method="get">
-                <input type="hidden" name="sort" value="desc">
-                <button type="submit">Sort Descending</button>
-            </form>
-            <form method="get">
-                <input type="hidden" name="sort" value="asc">
-                <button type="submit">Sort Ascending</button>
-            </form>
-            <form method="get">
-                <input type="hidden" name="sort" value="default">
-                <button type="submit">Sort Default</button>
-            </form>
+
+        <div class="chart-container">
+            {{ script|safe }}
+            {{ div|safe }}
         </div>
-        <div>
-            {% if script and div %}
-                {{ script|safe }}
-                {{ div|safe }}
-            {% else %}
-                <p>No data available for the chart.</p>
-            {% endif %}
+
+        {% if data_table %}
+        <div class="data-table-container">
+            <h3>Дані по замовленнях</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Клієнт</th>
+                        <th>Загальна сума замовлень</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data_table %}
+                    <tr>
+                        <td>{{ row.customer_name }}</td>
+                        <td>{{ row.total_sum }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% endif %}
     </div>
+
+    <script>
+        // Add range slider value display functionality
+        function updateRangeValue(inputId, displayId) {
+            const input = document.getElementById(inputId);
+            const display = document.getElementById(displayId);
+            input.addEventListener('input', function() {
+                display.textContent = this.value;
+            });
+        }
+
+        updateRangeValue('id_min_sum', 'min_sum_display');
+        updateRangeValue('id_max_sum', 'max_sum_display');
+    </script>
 </body>
 </html>

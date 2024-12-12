@@ -63,20 +63,61 @@ def create_bokeh_chart(df):
     script, div = components(p)
     return script, div
 
+from django.shortcuts import render
+import pandas as pd
+from bokeh.plotting import figure
+from bokeh.embed import components
+from bokeh.models import ColumnDataSource
+from .forms import RangeFilterForm
+
 def total_order_sum_by_customers_view(request):
-    sort_order = request.GET.get('sort', 'desc')
+    # Get data
     total_order_data = get_total_order_sum_by_customers()
+    df = prepare_dataframe(list(total_order_data.values(
+        'customer__first_name', 
+        'customer__last_name', 
+        'total_sum'
+    )), 'default')
     
-    # Ensure you're fetching the right fields
-    data = list(total_order_data.values('customer__first_name', 'customer__last_name', 'total_sum'))
+    # Initialize form
+    if df.empty:
+        total_sums = [0]
+    else:
+        total_sums = df['total_sum']
     
-    df = prepare_dataframe(data, sort_order)
-    stats = calculate_statistics(df)
+    form = RangeFilterForm(
+        request.POST or None,
+        field_name="sum",
+        min_val=int(total_sums.min()),
+        max_val=int(total_sums.max())
+    )
+
+    # Process form
+    if form.is_valid():
+        min_sum = form.cleaned_data.get('min_sum') or total_sums.min()
+        max_sum = form.cleaned_data.get('max_sum') or (total_sums.max() * 2)
+        sort_order = form.cleaned_data.get('sort_order', 'default')
+    else:
+        min_sum = total_sums.min()
+        max_sum = total_sums.max() * 2
+        sort_order = 'default'
+
+    # Apply filters
+    if not df.empty:
+        df = df[(df['total_sum'] >= min_sum) & (df['total_sum'] <= max_sum)]
+        if sort_order in ['asc', 'desc']:
+            df = prepare_dataframe(df.to_dict('records'), sort_order)
+
+    # Create chart
     script, div = create_bokeh_chart(df)
     
+    # Calculate stats
+    stats = calculate_statistics(df)
+
     return render(request, 'bokeh_total_order_sum_by_customers.html', {
         'script': script,
         'div': div,
+        'form': form,
         'data_table': df.to_dict(orient='records'),
         'stats': stats,
         'sort_order': sort_order,

@@ -1,79 +1,139 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Analysis of Order Sums by Waiters</title>
-    <link
-      href="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.css"
-      rel="stylesheet" type="text/css">
-    <script
-      src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.js">
-    </script>
+    <title>Загальна сума замовлень по офіціантах</title>
+    <link href="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.css" rel="stylesheet" type="text/css">
+    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.1.min.js"></script>
     <style>
         .container {
             width: 95%;
             margin: auto;
             font-family: Arial, sans-serif;
         }
-        .stats, .controls {
+        .stats, .controls, .filter-form {
             margin: 20px 0;
         }
-        .stats p {
+        .stats ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .stats li {
             margin: 5px 0;
         }
-        .controls form {
-            display: inline-block;
-            margin-right: 10px;
-        }
-        .controls button {
+        .controls button, .filter-form button {
             padding: 10px 15px;
             background-color: #4CAF50;
             color: white;
             border: none;
             cursor: pointer;
+            border-radius: 4px;
+            margin-right: 5px;
         }
-        .controls button:hover {
+        .controls button:hover, .filter-form button:hover {
             background-color: #45a049;
+        }
+        .filter-form label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        .filter-form input[type="range"] {
+            width: 100%;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        .data-table th {
+            background-color: #f2f2f2;
+            text-align: left;
+        }
+        .chart-container {
+            margin-top: 40px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Analysis of Order Sums by Waiters</h1>
+        <h1>Загальна сума замовлень по офіціантах</h1>
 
-        <div>
-            <h3>Statistical Data:</h3>
+        <div class="filter-form">
+            <h3>Фільтр та сортування</h3>
+            <form method="post">
+                {% csrf_token %}
+                <label for="id_min_sum">Мінімальна сума замовлень: <span id="min_sum_display">{{ form.initial.min_sum }}</span></label>
+                <input type="range" name="min_sum" id="id_min_sum" min="{{ form.fields.min_sum.min_value }}" max="{{ form.fields.min_sum.max_value }}" value="{{ form.initial.min_sum }}">
+
+                <label for="id_max_sum">Максимальна сума замовлень: <span id="max_sum_display">{{ form.initial.max_sum }}</span></label>
+                <input type="range" name="max_sum" id="id_max_sum" min="{{ form.fields.max_sum.min_value }}" max="{{ form.fields.max_sum.max_value }}" value="{{ form.initial.max_sum }}">
+
+                {{ form.sort_order.label_tag }}
+                {{ form.sort_order }}
+
+                <button type="submit">Застосувати</button>
+            </form>
+        </div>
+
+        <div class="stats">
+            <h3>Статистика</h3>
             <ul>
-                <li><strong>Average Order Sum:</strong> {{ stats.mean|floatformat:2 }}</li>
-                <li><strong>Median Order Sum:</strong> {{ stats.median|floatformat:2 }}</li>
-                <li><strong>Minimum Order Sum:</strong> {{ stats.min|floatformat:2 }}</li>
-                <li><strong>Maximum Order Sum:</strong> {{ stats.max|floatformat:2 }}</li>
+                <li><strong>Середня сума замовлень:</strong> {{ stats.mean|floatformat:2 }}</li>
+                <li><strong>Медіана суми замовлень:</strong> {{ stats.median|floatformat:2 }}</li>
+                <li><strong>Мінімальна сума замовлень:</strong> {{ stats.min|floatformat:2 }}</li>
+                <li><strong>Максимальна сума замовлень:</strong> {{ stats.max|floatformat:2 }}</li>
             </ul>
         </div>
 
-        <div class="controls">
-            <form method="get">
-                <input type="hidden" name="sort" value="desc">
-                <button type="submit">Sort Descending</button>
-            </form>
-            <form method="get">
-                <input type="hidden" name="sort" value="asc">
-                <button type="submit">Sort Ascending</button>
-            </form>
-            <form method="get">
-                <input type="hidden" name="sort" value="default">
-                <button type="submit">Sort Default</button>
-            </form>
-        </div>
-
-        <div>
+        <div class="chart-container">
             {% if script and div %}
                 {{ script|safe }}
                 {{ div|safe }}
             {% else %}
-                <p>No data available for the chart.</p>
+                <p>Немає даних для відображення графіку.</p>
             {% endif %}
         </div>
+
+        <div class="data-table-container">
+            <h3>Дані по замовленнях</h3>
+            {% if data_table %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Офіціант</th>
+                            <th>Загальна сума замовлень</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data_table %}
+                        <tr>
+                            <td>{{ row.waiter_name }}</td>
+                            <td>{{ row.total_sum }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Дані відсутні.</p>
+            {% endif %}
+        </div>
+
+        <script>
+            function updateRangeValue(inputId, displayId) {
+                const input = document.getElementById(inputId);
+                const display = document.getElementById(displayId);
+                input.addEventListener('input', function() {
+                    display.textContent = this.value;
+                });
+            }
+
+            updateRangeValue('id_min_sum', 'min_sum_display');
+            updateRangeValue('id_max_sum', 'max_sum_display');
+        </script>
     </div>
 </body>
 </html>

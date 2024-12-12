@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Total Income by Item</title>
-    <!-- Include Plotly.js -->
+    <title>Загальний дохід по товарах</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         .container {
@@ -12,45 +10,132 @@
             margin: auto;
             font-family: Arial, sans-serif;
         }
-        .stats, .controls {
+        .stats, .controls, .filter-form {
             margin: 20px 0;
         }
-        .stats p {
+        .stats ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .stats li {
             margin: 5px 0;
         }
-        .controls button {
+        .controls button, .filter-form button {
             padding: 10px 15px;
             background-color: #4CAF50;
             color: white;
             border: none;
             cursor: pointer;
             border-radius: 4px;
+            margin-right: 5px;
         }
-        .controls button:hover {
+        .controls button:hover, .filter-form button:hover {
             background-color: #45a049;
+        }
+        .filter-form label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        .filter-form input[type="range"] {
+            width: 100%;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        .data-table th {
+            background-color: #f2f2f2;
+            text-align: left;
+        }
+        .chart-container {
+            margin-top: 40px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Total Income by Item</h1>
+        <h1>Загальний дохід по товарах</h1>
+
+        <div class="filter-form">
+            <h3>Фільтр та сортування</h3>
+            <form method="post">
+                {% csrf_token %}
+                <label for="id_min_income">Мінімальний дохід: <span id="min_income_value">{{ form.initial.min_income }}</span></label>
+                <input type="range" name="min_income" id="id_min_income" 
+                       min="{{ form.fields.min_income.min_value }}" 
+                       max="{{ form.fields.min_income.max_value }}" 
+                       value="{{ form.initial.min_income }}">
+
+                <label for="id_max_income">Максимальний дохід: <span id="max_income_value">{{ form.initial.max_income }}</span></label>
+                <input type="range" name="max_income" id="id_max_income"
+                       min="{{ form.fields.max_income.min_value }}"
+                       max="{{ form.fields.max_income.max_value }}"
+                       value="{{ form.initial.max_income }}">
+
+                {{ form.sort_order.label_tag }}
+                {{ form.sort_order }}
+
+                <button type="submit">Застосувати</button>
+            </form>
+        </div>
 
         <div class="stats">
-            <p><strong>Average Total Income:</strong> {{ stats.mean|floatformat:2 }}</p>
-            <p><strong>Median Total Income:</strong> {{ stats.median|floatformat:2 }}</p>
-            <p><strong>Minimum Total Income:</strong> {{ stats.min|floatformat:2 }}</p>
-            <p><strong>Maximum Total Income:</strong> {{ stats.max|floatformat:2 }}</p>
+            <h3>Статистика</h3>
+            <ul>
+                <li><strong>Середній дохід:</strong> {{ mean|floatformat:2 }}</li>
+                <li><strong>Медіана доходу:</strong> {{ median|floatformat:2 }}</li>
+                <li><strong>Мінімальний дохід:</strong> {{ min|floatformat:2 }}</li>
+                <li><strong>Максимальний дохід:</strong> {{ max|floatformat:2 }}</li>
+            </ul>
         </div>
 
-        <div class="controls">
-            <button onclick="window.location.href='?sort=default'">Default Sort</button>
-            <button onclick="window.location.href='?sort=asc'">Sort Ascending</button>
-            <button onclick="window.location.href='?sort=desc'">Sort Descending</button>
+        <div class="chart-container">
+            {{ plot|safe }}
         </div>
 
-        <div>
-            {{ chart_html|safe }}
+        <div class="data-table-container">
+            <h3>Дані по товарах</h3>
+            {% if data %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Товар</th>
+                            <th>Загальний дохід</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data %}
+                        <tr>
+                            <td>{{ row.item_name }}</td>
+                            <td>{{ row.total_income }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Дані відсутні.</p>
+            {% endif %}
         </div>
+
+        <script>
+            const minIncomeInput = document.getElementById('id_min_income');
+            const maxIncomeInput = document.getElementById('id_max_income');
+            const minIncomeValue = document.getElementById('min_income_value');
+            const maxIncomeValue = document.getElementById('max_income_value');
+
+            minIncomeInput.addEventListener('input', function() {
+                minIncomeValue.textContent = this.value;
+            });
+
+            maxIncomeInput.addEventListener('input', function() {
+                maxIncomeValue.textContent = this.value;
+            });
+        </script>
     </div>
 </body>
 </html>
